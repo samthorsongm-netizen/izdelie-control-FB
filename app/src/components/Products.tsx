@@ -3,11 +3,13 @@ import type { Repo } from '../data/repo'
 import type { Product, Profile } from '../model/types'
 import { Modal, Confirm } from './Modal'
 import { resetDemo } from '../data/local'
+import { importDump } from '../data/auth'
 
 export function Products({ repo, me, onOpen }: { repo: Repo; me: Profile; onOpen: (id: string) => void }) {
   const [items, setItems] = useState<Product[]>([])
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [deleting, setDeleting] = useState<Product | null>(null)
 
   const load = useCallback(async () => {
@@ -27,6 +29,11 @@ export function Products({ repo, me, onOpen }: { repo: Repo; me: Profile; onOpen
       <div className="row" style={{ marginBottom: 14 }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>Изделия</h2>
         <div className="grow" />
+        {me.role === 'admin' && importDump && (
+          <button className="btn" onClick={() => setImporting(true)} title="Перенести данные из Supabase">
+            Импорт
+          </button>
+        )}
         {me.role === 'admin' && (
           <button className="btn primary" onClick={() => setCreating(true)}>
             + Изделие
@@ -76,6 +83,16 @@ export function Products({ repo, me, onOpen }: { repo: Repo; me: Profile; onOpen
         </div>
       )}
 
+      {importing && (
+        <ImportModal
+          onClose={() => setImporting(false)}
+          onDone={async () => {
+            setImporting(false)
+            await load()
+          }}
+        />
+      )}
+
       {creating && (
         <CreateModal
           repo={repo}
@@ -113,6 +130,86 @@ export function Products({ repo, me, onOpen }: { repo: Repo; me: Profile; onOpen
         />
       )}
     </>
+  )
+}
+
+function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [note, setNote] = useState('')
+
+  const run = async (file: File) => {
+    setBusy(true)
+    setError('')
+    setNote('')
+    try {
+      const text = await file.text()
+      const res = await importDump!(JSON.parse(text))
+      setNote(`Перенесено: изделий ${res.products}, позиций ${res.items}, вхождений ${res.occurrences}.`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal
+      title="Импорт из Supabase"
+      onClose={onClose}
+      footer={
+        <>
+          {note && (
+            <button className="btn primary" onClick={onDone}>
+              Готово
+            </button>
+          )}
+          <button className="btn" onClick={onClose}>
+            Закрыть
+          </button>
+        </>
+      }
+    >
+      <p className="small muted" style={{ marginTop: 0 }}>
+        В Supabase открой SQL Editor, выполни запрос ниже и сохрани ответ в файл <b>.json</b>. Потом выбери его здесь.
+        Файл читается в браузере и пишется прямо в Firestore — на сервер не уходит.
+      </p>
+      <pre
+        style={{
+          background: 'var(--line-soft)',
+          padding: 10,
+          borderRadius: 8,
+          fontSize: 11,
+          overflow: 'auto',
+          maxHeight: 200,
+          whiteSpace: 'pre-wrap',
+        }}
+      >{`select json_build_object(
+  'products', (select coalesce(json_agg(p), '[]'::json)
+               from (select id, code, name from public.products) p),
+  'items', (select coalesce(json_agg(i), '[]'::json)
+            from (select * from public.items) i),
+  'occurrences', (select coalesce(json_agg(o), '[]'::json)
+                  from (select * from public.occurrences) o)
+) as dump;`}</pre>
+
+      <div className="field">
+        <label>Файл дампа</label>
+        <input
+          type="file"
+          accept=".json,application/json"
+          disabled={busy}
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void run(f)
+          }}
+        />
+      </div>
+
+      {busy && <div className="hint">Переношу…</div>}
+      {error && <div className="banner">{error}</div>}
+      {note && <div className="banner">{note}</div>}
+    </Modal>
   )
 }
 
