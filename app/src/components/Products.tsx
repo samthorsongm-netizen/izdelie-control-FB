@@ -3,7 +3,7 @@ import type { Repo } from '../data/repo'
 import type { Product, Profile } from '../model/types'
 import { Modal, Confirm } from './Modal'
 import { resetDemo } from '../data/local'
-import { importDump } from '../data/auth'
+import { importDump, exportDump } from '../data/auth'
 
 export function Products({ repo, me, onOpen }: { repo: Repo; me: Profile; onOpen: (id: string) => void }) {
   const [items, setItems] = useState<Product[]>([])
@@ -29,8 +29,23 @@ export function Products({ repo, me, onOpen }: { repo: Repo; me: Profile; onOpen
       <div className="row" style={{ marginBottom: 14 }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>Изделия</h2>
         <div className="grow" />
+        {me.role === 'admin' && exportDump && (
+          <button
+            className="btn"
+            title="Скачать копию всех данных в JSON"
+            onClick={() => void exportDump().then((json) => {
+              const a = document.createElement('a')
+              a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }))
+              a.download = `izdelie-${new Date().toISOString().slice(0, 10)}.json`
+              a.click()
+              URL.revokeObjectURL(a.href)
+            })}
+          >
+            Экспорт
+          </button>
+        )}
         {me.role === 'admin' && importDump && (
-          <button className="btn" onClick={() => setImporting(true)} title="Перенести данные из Supabase">
+          <button className="btn" onClick={() => setImporting(true)} title="Перенести данные из файла">
             Импорт
           </button>
         )}
@@ -155,7 +170,7 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
 
   return (
     <Modal
-      title="Импорт из Supabase"
+      title="Импорт данных"
       onClose={onClose}
       footer={
         <>
@@ -171,28 +186,9 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
       }
     >
       <p className="small muted" style={{ marginTop: 0 }}>
-        В Supabase открой SQL Editor, выполни запрос ниже и сохрани ответ в файл <b>.json</b>. Потом выбери его здесь.
-        Файл читается в браузере и пишется прямо в Firestore — на сервер не уходит.
+        Файл формата, который отдаёт кнопка «Экспорт» (или старый дамп из Supabase). Читается в браузере и
+        пишется прямо в Firestore — на сервер не уходит. Повторный импорт перезаписывает данные с теми же id.
       </p>
-      <pre
-        style={{
-          background: 'var(--line-soft)',
-          padding: 10,
-          borderRadius: 8,
-          fontSize: 11,
-          overflow: 'auto',
-          maxHeight: 200,
-          whiteSpace: 'pre-wrap',
-        }}
-      >{`select json_build_object(
-  'products', (select coalesce(json_agg(p), '[]'::json)
-               from (select id, code, name from public.products) p),
-  'items', (select coalesce(json_agg(i), '[]'::json)
-            from (select * from public.items) i),
-  'occurrences', (select coalesce(json_agg(o), '[]'::json)
-                  from (select * from public.occurrences) o)
-) as dump;`}</pre>
-
       <div className="field">
         <label>Файл дампа</label>
         <input
