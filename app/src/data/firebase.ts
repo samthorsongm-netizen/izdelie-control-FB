@@ -131,6 +131,35 @@ export async function createUser(email: string, password: string, name: string, 
   return uid
 }
 
+// ---------- перенос данных из Supabase ----------
+
+interface Dump {
+  products?: Product[]
+  items?: Item[]
+  occurrences?: Occurrence[]
+}
+
+/**
+ * Импорт дампа: каждый продукт пишется в products + snapshots одним комплектом.
+ * Вызывается из браузера под сессией админа — файл никуда не уходит.
+ */
+export async function importDump(raw: unknown): Promise<{ products: number; items: number; occurrences: number }> {
+  const d = raw as Dump
+  const products = d.products ?? []
+  const items = d.items ?? []
+  const occurrences = d.occurrences ?? []
+  if (!products.length) throw new Error('В файле нет ни одного изделия — проверьте дамп')
+
+  for (const p of products) {
+    await setDoc(doc(db(), 'products', p.id), { code: p.code ?? null, name: p.name ?? '' })
+    await setDoc(doc(db(), 'snapshots', p.id), {
+      items: items.filter((i) => i.product_id === p.id),
+      occurrences: occurrences.filter((o) => o.product_id === p.id),
+    })
+  }
+  return { products: products.length, items: items.length, occurrences: occurrences.length }
+}
+
 // ---------- хранилище ----------
 
 export const firebaseRepo: Repo = {
