@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Profile, Role } from '../model/types'
 import { ROLE_LABEL } from '../model/types'
-import { createUser, listProfiles, setRole } from '../data/supabase'
+import { createUser, listProfiles, setRole } from '../data/auth'
 import { Modal } from './Modal'
 
 const ROLES: Role[] = ['admin', 'editor', 'viewer']
@@ -146,8 +146,7 @@ export function UsersDialog({ meId, onClose }: { meId: string; onClose: () => vo
         {busy ? 'Добавляем…' : 'Добавить'}
       </button>
       <div className="hint" style={{ marginTop: 6 }}>
-        Пароль сообщите человеку сами. В Supabase должны быть включены Authentication → Providers → Email → Enable
-        sign ups (иначе добавить не получится) и выключено Confirm email (иначе вход только после письма).
+        Пароль сообщите человеку сами. В Firebase: Authentication → Sign-in method → Email/Password должно быть включено.
       </div>
     </Modal>
   )
