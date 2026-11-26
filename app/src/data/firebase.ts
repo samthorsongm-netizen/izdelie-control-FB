@@ -131,7 +131,7 @@ export async function createUser(email: string, password: string, name: string, 
   return uid
 }
 
-// ---------- перенос данных из Supabase ----------
+// ---------- перенос данных ----------
 
 interface Dump {
   products?: Product[]
@@ -158,6 +158,20 @@ export async function importDump(raw: unknown): Promise<{ products: number; item
     })
   }
   return { products: products.length, items: items.length, occurrences: occurrences.length }
+}
+
+/** Полная выгрузка в том же формате, что принимает импорт — резервная копия. */
+export async function exportDump(): Promise<string> {
+  const ps = await getDocs(collection(db(), 'products'))
+  const products = ps.docs.map((x) => ({ id: x.id, ...(x.data() as Omit<Product, 'id'>) }))
+  const items: Item[] = []
+  const occurrences: Occurrence[] = []
+  for (const p of products) {
+    const d = await snapshotOf(p.id)
+    items.push(...d.items)
+    occurrences.push(...d.occurrences)
+  }
+  return JSON.stringify({ products, items, occurrences }, null, 1)
 }
 
 // ---------- хранилище ----------
