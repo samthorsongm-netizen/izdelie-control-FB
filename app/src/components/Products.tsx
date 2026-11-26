@@ -24,28 +24,28 @@ export function Products({ repo, me, onOpen }: { repo: Repo; me: Profile; onOpen
     void load()
   }, [load])
 
+  const saveDump = async () => {
+    if (!exportDump) return
+    const json = await exportDump()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }))
+    a.download = `izdelie-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   return (
     <>
       <div className="row" style={{ marginBottom: 14 }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>Изделия</h2>
         <div className="grow" />
         {me.role === 'admin' && exportDump && (
-          <button
-            className="btn"
-            title="Скачать копию всех данных в JSON"
-            onClick={() => void exportDump().then((json) => {
-              const a = document.createElement('a')
-              a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }))
-              a.download = `izdelie-${new Date().toISOString().slice(0, 10)}.json`
-              a.click()
-              URL.revokeObjectURL(a.href)
-            })}
-          >
+          <button className="btn" title="Скачать копию всех данных в JSON" onClick={() => void saveDump()}>
             Экспорт
           </button>
         )}
         {me.role === 'admin' && importDump && (
-          <button className="btn" onClick={() => setImporting(true)} title="Перенести данные из файла">
+          <button className="btn" onClick={() => setImporting(true)} title="Загрузить данные из файла">
             Импорт
           </button>
         )}
@@ -158,8 +158,9 @@ function ImportModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
     setError('')
     setNote('')
     try {
+      if (!importDump) throw new Error('Импорт доступен только в облачной версии')
       const text = await file.text()
-      const res = await importDump!(JSON.parse(text))
+      const res = await importDump(JSON.parse(text))
       setNote(`Перенесено: изделий ${res.products}, позиций ${res.items}, вхождений ${res.occurrences}.`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
