@@ -1,20 +1,18 @@
 /**
- * Выбор хранилища: Firebase (если заданы его переменные) или Supabase.
- * Приложение импортирует только этот файл — остальной код не знает, что внутри.
+ * Хранилище — Firebase. Файл остаётся прослойкой, чтобы остальной код
+ * не знал, где лежат данные; при пустых переменных окружения включается демо.
  */
-import * as sb from './supabase'
 import * as fb from './firebase'
 
-const useFirebase = fb.firebaseEnabled
-
-export const cloudEnabled = useFirebase || sb.cloudEnabled
-export const cloudRepo = useFirebase ? fb.firebaseRepo : sb.cloudRepo
-export const loadProfile = useFirebase ? fb.loadProfile : sb.loadProfile
-export const signIn = useFirebase ? fb.signIn : sb.signIn
-export const signOut = useFirebase ? fb.signOut : sb.signOut
-export const listProfiles = useFirebase ? fb.listProfiles : sb.listProfiles
-export const setRole = useFirebase ? fb.setRole : sb.setRole
-export const createUser = useFirebase ? fb.createUser : sb.createUser
-export const resetPeopleCache = useFirebase ? () => {} : sb.resetPeopleCache
-/** импорт дампа есть только в Firebase-версии; null скрывает кнопку */
-export const importDump = useFirebase ? fb.importDump : null
+export const cloudEnabled = fb.firebaseEnabled
+export const cloudRepo = fb.firebaseRepo
+export const loadProfile = fb.loadProfile
+export const signIn = fb.signIn
+export const signOut = fb.signOut
+export const listProfiles = fb.listProfiles
+export const setRole = fb.setRole
+export const createUser = fb.createUser
+export const resetPeopleCache = () => {}
+/** обмен структуры файлом: null в демо-режиме, чтобы не рисовать кнопки */
+export const importDump = fb.firebaseEnabled ? fb.importDump : null
+export const exportDump = fb.firebaseEnabled ? fb.exportDump : null
