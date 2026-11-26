@@ -16,3 +16,5 @@ export const listProfiles = useFirebase ? fb.listProfiles : sb.listProfiles
 export const setRole = useFirebase ? fb.setRole : sb.setRole
 export const createUser = useFirebase ? fb.createUser : sb.createUser
 export const resetPeopleCache = useFirebase ? () => {} : sb.resetPeopleCache
+/** импорт дампа есть только в Firebase-версии; null скрывает кнопку */
+export const importDump = useFirebase ? fb.importDump : null
